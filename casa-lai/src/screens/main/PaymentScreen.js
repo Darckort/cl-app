@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
+import { clearCart } from '../../redux/slices/cartSlice';
 import COLORS from '../../constants/colors';
 import theme from '../../constants/theme';
 
@@ -39,13 +40,43 @@ const banks = [
 
 const PaymentScreen = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
   const { total } = useSelector(state => state.cart);
-  const [selectedMethod, setSelectedMethod] = useState(null);
+
+  // Estados para los modales
+  const [showBankInfoModal, setShowBankInfoModal] = useState(false);
   const [showMobilePaymentModal, setShowMobilePaymentModal] = useState(false);
-  const [bank, setBank] = useState('');
-  const [reference, setReference] = useState('');
+  
+  // Estados para el método de pago seleccionado
+  const [selectedMethod, setSelectedMethod] = useState('');
+  
+  // Estados para el procesamiento
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Estados para Pago Móvil
   const [phone, setPhone] = useState('');
-  const [showBankList, setShowBankList] = useState(false);
+  const [reference, setReference] = useState('');
+  const [selectedBank, setSelectedBank] = useState('');
+  const [showBankDropdown, setShowBankDropdown] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Datos de la empresa
+  const companyBankInfo = {
+    mobilePayment: {
+      bank: 'Banco de Venezuela',
+      phone: '0412-1234567',
+      ci: 'V-12345678',
+      name: 'Tienda LAI C.A.'
+    },
+    bankTransfer: {
+      bank: 'Banco de Venezuela',
+      accountType: 'Corriente',
+      accountNumber: '0102-1234-56789123456789',
+      ci: 'V-12345678',
+      name: 'Tienda LAI C.A.',
+      email: 'pagos@tulaiservicios.com'
+    }
+  };
 
   const formatPhoneNumber = (text) => {
     // Remove all non-digit characters
@@ -59,22 +90,104 @@ const PaymentScreen = () => {
       formatted = cleaned;
     }
     
-    setPhone(formatted);
+    setPhone(cleaned); // Guardamos el número sin formato para procesamiento
+  };
+
+  const handlePaymentSuccess = () => {
+    // Vaciar el carrito
+    dispatch(clearCart());
+    
+    // Cerrar los modales
+    setShowMobilePaymentModal(false);
+    setShowBankInfoModal(false);
+    
+    // Mostrar mensaje de éxito con opciones
+    Alert.alert(
+      '✅ Pago Procesado',
+      '¡Tu pedido ha sido registrado con éxito!\n\nNúmero de referencia: ' + 
+      (reference || 'PM-' + Math.random().toString(36).substr(2, 8).toUpperCase()) + 
+      '\n\n¡Gracias por tu compra!',
+      [
+        { 
+          text: 'Aceptar',
+          onPress: () => {
+            navigation.popToTop();
+          },
+          style: 'default'
+        }
+      ],
+      { cancelable: false }
+    );
   };
 
   const handlePayment = () => {
-    // Handle payment submission
-    console.log({
-      method: selectedMethod,
-      bank,
-      reference,
-      phone,
-      amount: total
-    });
+    // Lógica de pago simplificada
+    setIsProcessing(true);
     
-    // Show success message and navigate to order confirmation
-    alert('Pago procesado exitosamente');
-    navigation.navigate('OrderConfirmation');
+    // Simular procesamiento
+    setTimeout(() => {
+      setIsProcessing(false);
+      handlePaymentSuccess();
+    }, 1500);
+  };
+
+  const renderPaymentMethods = () => (
+    <View style={styles.paymentMethods}>
+      <TouchableOpacity 
+        style={styles.paymentMethod}
+        onPress={() => {
+          setSelectedMethod('mobile');
+          setShowMobilePaymentModal(true);
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.methodIconContainer}>
+          <Ionicons 
+            name="phone-portrait-outline" 
+            size={24} 
+            color={COLORS.primary} 
+          />
+        </View>
+        <View style={styles.methodTextContainer}>
+          <Text style={styles.paymentMethodText}>
+            Pago Móvil
+          </Text>
+          <Text style={styles.methodDescription}>Paga con tu teléfono móvil</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.paymentMethod, { marginTop: 12 }]}
+        onPress={() => {
+          setSelectedMethod('bank');
+          setShowBankInfoModal(true);
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={styles.methodIconContainer}>
+          <Ionicons 
+            name="card-outline" 
+            size={24} 
+            color={COLORS.primary} 
+          />
+        </View>
+        <View style={styles.methodTextContainer}>
+          <Text style={styles.paymentMethodText}>
+            Ver Datos Bancarios
+          </Text>
+          <Text style={styles.methodDescription}>Consulta nuestros datos bancarios para transferencia</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const copyToClipboard = (text) => {
+    // In a real app, you would use Clipboard from 'react-native'
+    // For now, we'll just log it
+    console.log('Copied to clipboard:', text);
+    Alert.alert('Copiado', 'La información ha sido copiada al portapapeles');
   };
 
   const renderMobilePaymentModal = () => (
@@ -85,101 +198,280 @@ const PaymentScreen = () => {
       onRequestClose={() => setShowMobilePaymentModal(false)}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <View style={styles.bankModalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Pago Móvil</Text>
-            <TouchableOpacity onPress={() => setShowMobilePaymentModal(false)}>
+            <Text style={styles.bankModalTitle}>Registrar Pago Móvil</Text>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setShowMobilePaymentModal(false)}
+            >
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalBody}>
-            <Text style={styles.instructions}>
-              Realiza el pago a través de tu banca móvil y luego ingresa los datos de la transacción.
-            </Text>
-            
-            <View style={styles.totalContainer}>
-              <Text style={styles.totalLabel}>Total a pagar:</Text>
-              <Text style={styles.totalAmount}>${total.toFixed(2)}</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Banco</Text>
-              <TouchableOpacity 
-                style={styles.bankSelector}
-                onPress={() => setShowBankList(!showBankList)}
-              >
-                <Text style={bank ? styles.bankSelectedText : styles.placeholderText}>
-                  {bank || 'Selecciona un banco'}
-                </Text>
-                <Ionicons 
-                  name={showBankList ? 'chevron-up' : 'chevron-down'} 
-                  size={20} 
-                  color={COLORS.text} 
-                />
-              </TouchableOpacity>
+          <ScrollView style={styles.bankModalBody}>
+            <View style={styles.bankAccountCard}>
+              <View style={styles.bankHeader}>
+                <Ionicons name="phone-portrait" size={20} color={COLORS.primary} />
+                <Text style={styles.bankName}>Datos del Pago</Text>
+              </View>
               
-              {showBankList && (
-                <View style={styles.bankList}>
-                  <ScrollView style={styles.bankScrollView}>
-                    {banks.map((item) => (
-                      <TouchableOpacity
-                        key={item.id}
-                        style={styles.bankItem}
-                        onPress={() => {
-                          setBank(item.name);
-                          setShowBankList(false);
-                        }}
-                      >
-                        <Text style={styles.bankName}>{item.name}</Text>
-                        <Text style={styles.bankCode}>({item.id})</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+              <View style={styles.formGroup}>
+                <Text style={styles.inputLabel}>Banco del que realiza el pago</Text>
+                <View style={styles.selectContainer}>
+                  <TouchableOpacity 
+                    style={styles.selectWrapper}
+                    onPress={() => setShowBankDropdown(!showBankDropdown)}
+                  >
+                    <Text 
+                      style={[
+                        styles.selectText, 
+                        !selectedBank && { color: COLORS.textSecondary },
+                        { flex: 1 }
+                      ]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {banks.find(b => b.id === selectedBank)?.name || 'Selecciona tu banco'}
+                    </Text>
+                    <Ionicons 
+                      name={showBankDropdown ? 'chevron-up' : 'chevron-down'} 
+                      size={20} 
+                      color={COLORS.textSecondary} 
+                      style={{ marginLeft: 8 }}
+                    />
+                  </TouchableOpacity>
                 </View>
-              )}
-            </View>
+                
+                {showBankDropdown && (
+                  <View style={styles.dropdownContainer}>
+                    <View style={styles.searchContainer}>
+                      <Ionicons name="search" size={18} color={COLORS.textSecondary} style={styles.searchIcon} />
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Buscar banco..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholderTextColor={COLORS.textSecondary}
+                      />
+                      {searchQuery ? (
+                        <TouchableOpacity 
+                          style={styles.clearButton}
+                          onPress={() => setSearchQuery('')}
+                        >
+                          <Ionicons name="close-circle" size={18} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                    <ScrollView 
+                      style={styles.dropdownScroll}
+                      nestedScrollEnabled={true}
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {banks
+                        .filter(bank => 
+                          bank.name.toLowerCase().includes(searchQuery.toLowerCase())
+                        )
+                        .map((bank) => (
+                          <TouchableOpacity
+                            key={bank.id}
+                            style={[
+                              styles.dropdownItem,
+                              selectedBank === bank.id && styles.dropdownItemSelected
+                            ]}
+                            onPress={() => {
+                              setSelectedBank(bank.id);
+                              setShowBankDropdown(false);
+                              setSearchQuery('');
+                            }}
+                          >
+                            <Text 
+                              style={[
+                                styles.dropdownItemText,
+                                selectedBank === bank.id && styles.dropdownItemTextSelected
+                              ]}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            >
+                              {bank.name}
+                            </Text>
+                            {selectedBank === bank.id && (
+                              <Ionicons name="checkmark" size={18} color={COLORS.primary} />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Últimos 6 dígitos de referencia</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="123456"
-                keyboardType="numeric"
-                maxLength={6}
-                value={reference}
-                onChangeText={setReference}
-              />
-            </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.inputLabel}>Número de referencia (6 dígitos)</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="receipt-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="123456"
+                    keyboardType="number-pad"
+                    value={reference}
+                    onChangeText={(text) => {
+                      // Limitar a 6 dígitos numéricos
+                      const cleaned = text.replace(/[^0-9]/g, '').substring(0, 6);
+                      setReference(cleaned);
+                    }}
+                    maxLength={6}
+                  />
+                </View>
+              </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Teléfono (ej: 0412-1234567)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0412-1234567"
-                keyboardType="phone-pad"
-                maxLength={12}
-                value={phone}
-                onChangeText={formatPhoneNumber}
-              />
+              <View style={styles.formGroup}>
+                <Text style={styles.inputLabel}>Número de teléfono</Text>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="phone-portrait-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="04121234567"
+                    keyboardType="phone-pad"
+                    value={phone}
+                    onChangeText={formatPhoneNumber}
+                    maxLength={12}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.noteContainer}>
+                <Text style={styles.noteTitle}>Datos de Pago Móvil</Text>
+                <View style={styles.infoGrid}>
+                  <Text style={styles.infoLabel}>Banco:</Text>
+                  <Text style={styles.infoValue}>Banco de Venezuela</Text>
+                  
+                  <Text style={styles.infoLabel}>Teléfono:</Text>
+                  <TouchableOpacity onPress={() => copyToClipboard('04121234567')}>
+                    <Text style={styles.infoValueLink}>0412-1234567</Text>
+                  </TouchableOpacity>
+                  
+                  <Text style={styles.infoLabel}>C.I.:</Text>
+                  <Text style={styles.infoValue}>V-12345678</Text>
+                  
+                  <Text style={styles.infoLabel}>Nombre:</Text>
+                  <Text style={styles.infoValue}>Tienda LAI C.A.</Text>
+                </View>
+              </View>
+
+              <View style={styles.noteContainer}>
+                <Text style={styles.noteTitle}>Nota Importante</Text>
+                <Text style={styles.noteText}>
+                  Por favor, asegúrate de que los datos ingresados sean correctos. El número de referencia debe coincidir exactamente con el que aparece en tu comprobante de pago.
+                </Text>
+              </View>
+
+              <TouchableOpacity 
+                style={[
+                  styles.payButton, 
+                  (isProcessing || !selectedBank || !reference || reference.length < 6 || !phone) && styles.payButtonDisabled
+                ]}
+                onPress={handlePayment}
+                disabled={isProcessing || !selectedBank || !reference || reference.length < 6 || !phone}
+              >
+                <Text style={styles.payButtonText}>
+                  {isProcessing ? 'Procesando...' : 'Registrar Pago'}
+                </Text>
+                {!isProcessing && (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.white} style={styles.payButtonIcon} />
+                )}
+              </TouchableOpacity>
             </View>
           </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 
-          <View style={styles.modalFooter}>
+  const renderBankInfoModal = () => (
+    <Modal
+      visible={showBankInfoModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowBankInfoModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.bankModalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.bankModalTitle}>Datos Bancarios</Text>
             <TouchableOpacity 
-              style={[styles.button, styles.cancelButton]}
-              onPress={() => setShowMobilePaymentModal(false)}
+              style={styles.closeButton}
+              onPress={() => setShowBankInfoModal(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.button, styles.confirmButton, (!bank || !reference || phone.length < 12) && styles.disabledButton]}
-              onPress={handlePayment}
-              disabled={!bank || !reference || phone.length < 12}
-            >
-              <Text style={styles.confirmButtonText}>Confirmar Pago</Text>
+              <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
+
+          <ScrollView style={styles.bankModalBody}>
+            {/* Banesco Account */}
+            <View style={styles.bankAccountCard}>
+              <View style={styles.bankHeader}>
+                <Ionicons name="business" size={20} color={COLORS.primary} />
+                <Text style={styles.bankName}>Banesco</Text>
+              </View>
+              
+              <View style={styles.infoGrid}>
+                <Text style={styles.infoLabel}>Número de Cuenta:</Text>
+                <TouchableOpacity onPress={() => copyToClipboard('0134567890123456')}>
+                  <Text style={styles.infoValueLink}>0134-5678-9012-3456</Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.infoLabel}>Titular:</Text>
+                <Text style={styles.infoValue}>Casa Lai C.A.</Text>
+                
+                <Text style={styles.infoLabel}>J-RIF:</Text>
+                <Text style={styles.infoValue}>J-12345678-9</Text>
+                
+                <Text style={styles.infoLabel}>Teléfono:</Text>
+                <Text style={styles.infoValue}>0412-1234567</Text>
+                
+                <Text style={styles.infoLabel}>Correo:</Text>
+                <Text style={styles.infoValue}>pagos@casalai.com</Text>
+              </View>
+            </View>
+
+            {/* Mercantil Account */}
+            <View style={[styles.bankAccountCard, {marginTop: 16}]}>
+              <View style={styles.bankHeader}>
+                <Ionicons name="business" size={20} color={COLORS.primary} />
+                <Text style={styles.bankName}>Mercantil</Text>
+              </View>
+              
+              <View style={styles.infoGrid}>
+                <Text style={styles.infoLabel}>Tipo de Cuenta:</Text>
+                <Text style={styles.infoValue}>Cuenta Corriente</Text>
+                
+                <Text style={styles.infoLabel}>Número de Cuenta:</Text>
+                <TouchableOpacity onPress={() => copyToClipboard('0105678901234567')}>
+                  <Text style={styles.infoValueLink}>0105-6789-0123-4567</Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.infoLabel}>Titular:</Text>
+                <Text style={styles.infoValue}>Casa Lai C.A.</Text>
+                
+                <Text style={styles.infoLabel}>J-RIF:</Text>
+                <Text style={styles.infoValue}>J-12345678-9</Text>
+                
+                <Text style={styles.infoLabel}>Teléfono:</Text>
+                <Text style={styles.infoValue}>0412-1234567</Text>
+                
+                <Text style={styles.infoLabel}>Correo:</Text>
+                <Text style={styles.infoValue}>pagos@casalai.com</Text>
+              </View>
+            </View>
+
+            {/* Note Section */}
+            <View style={styles.noteContainer}>
+              <Text style={styles.noteTitle}>Nota:</Text>
+              <Text style={styles.noteText}>
+                Por favor, envíe el comprobante de pago al número de WhatsApp o correo electrónico indicado para confirmar su transacción.
+              </Text>
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -193,89 +485,54 @@ const PaymentScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Métodos de Pago</Text>
         
-        <View style={styles.paymentMethods}>
-          <TouchableOpacity 
-            style={[styles.methodCard, selectedMethod === 'mobile' && styles.selectedMethod]}
-            onPress={() => {
-              setSelectedMethod('mobile');
-              setShowMobilePaymentModal(true);
-            }}
-          >
-            <View style={styles.methodIcon}>
-              <Ionicons name="phone-portrait" size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.methodInfo}>
-              <Text style={styles.methodName}>Pago Móvil</Text>
-              <Text style={styles.methodDescription}>Paga con tu banca móvil preferida</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.methodCard, selectedMethod === 'transfer' && styles.selectedMethod]}
-            onPress={() => setSelectedMethod('transfer')}
-          >
-            <View style={styles.methodIcon}>
-              <Ionicons name="swap-horizontal" size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.methodInfo}>
-              <Text style={styles.methodName}>Transferencia Bancaria</Text>
-              <Text style={styles.methodDescription}>Realiza una transferencia desde tu banco</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.methodCard, selectedMethod === 'cash' && styles.selectedMethod]}
-            onPress={() => setSelectedMethod('cash')}
-          >
-            <View style={styles.methodIcon}>
-              <Ionicons name="cash" size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.methodInfo}>
-              <Text style={styles.methodName}>Efectivo</Text>
-              <Text style={styles.methodDescription}>Paga al momento de la entrega</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
-          </TouchableOpacity>
-        </View>
-
+        {renderPaymentMethods()}
+        
         <View style={styles.summary}>
-          <Text style={styles.summaryTitle}>Resumen del Pedido</Text>
+          <Text style={styles.summaryTitle}>Resumen del Pago</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryLabel}>Subtotal:</Text>
             <Text style={styles.summaryValue}>${total.toFixed(2)}</Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Envío</Text>
-            <Text style={styles.summaryValue}>$0.00</Text>
-          </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalLabel}>Total:</Text>
             <Text style={styles.totalAmount}>${total.toFixed(2)}</Text>
           </View>
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.payButton, !selectedMethod && styles.disabledButton]}
-          disabled={!selectedMethod}
-          onPress={() => {
-            if (selectedMethod === 'mobile') {
-              setShowMobilePaymentModal(true);
-            } else {
-              handlePayment();
-            }
-          }}
-        >
-          <Text style={styles.payButtonText}>
-            {selectedMethod === 'mobile' ? 'Continuar con Pago Móvil' : 'Realizar Pago'}
+        
+        <View style={styles.payButtonContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.payButton,
+              isProcessing && styles.payButtonDisabled
+            ]} 
+            disabled={isProcessing}
+            onPress={handlePayment}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.payButtonText}>
+              {isProcessing ? 'Procesando...' : `Pagar $${total.toFixed(2)}`}
+            </Text>
+            {!isProcessing && (
+              <Ionicons name="arrow-forward" size={20} color={COLORS.white} style={styles.payButtonIcon} />
+            )}
+          </TouchableOpacity>
+          <Text style={styles.securePaymentText}>
+            <Ionicons name="lock-closed" size={14} color={COLORS.textSecondary} /> Pago seguro
           </Text>
-        </TouchableOpacity>
-      </View>
-
+        </View>
+      </ScrollView>
+      
+      {renderBankInfoModal()}
       {renderMobilePaymentModal()}
+      
+      {/* Overlay for dropdown */}
+      {showBankDropdown && (
+        <TouchableOpacity 
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => setShowBankDropdown(false)}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -284,10 +541,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    padding: 20,
+    paddingBottom: 30,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 30,
   },
   title: {
     ...theme.typography.h4,
@@ -296,50 +554,51 @@ const styles = StyleSheet.create({
   },
   paymentMethods: {
     marginBottom: 24,
+    gap: 16,
+    padding: 4,
   },
-  methodCard: {
+  paymentMethod: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.white,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
-    ...theme.shadow.sm,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    minHeight: 88,
   },
-  selectedMethod: {
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  methodIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.lightPrimary,
+  methodIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(25, 118, 210, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
-  methodInfo: {
+  methodTextContainer: {
     flex: 1,
-  },
-  methodName: {
-    ...theme.typography.subtitle,
-    color: COLORS.text,
-    marginBottom: 4,
   },
   methodDescription: {
     ...theme.typography.caption,
     color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  paymentMethodText: {
+    ...theme.typography.subtitle,
+    color: COLORS.text,
+    fontSize: 16,
   },
   summary: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
     padding: 16,
+    marginBottom: 24,
     ...theme.shadow.sm,
   },
   summaryTitle: {
     ...theme.typography.subtitle,
-    marginBottom: 16,
+    marginBottom: 12,
     color: COLORS.text,
   },
   summaryRow: {
@@ -347,171 +606,267 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  summaryLabel: {
-    ...theme.typography.body,
-    color: COLORS.textSecondary,
-  },
-  summaryValue: {
-    ...theme.typography.body,
-    color: COLORS.text,
-  },
   totalRow: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
+  summaryLabel: {
+    ...theme.typography.body2,
+    color: COLORS.textSecondary,
+  },
+  summaryValue: {
+    ...theme.typography.body2,
+    color: COLORS.text,
+  },
   totalLabel: {
     ...theme.typography.subtitle,
     color: COLORS.text,
+    fontWeight: '600',
   },
   totalAmount: {
-    ...theme.typography.h5,
+    ...theme.typography.h6,
     color: COLORS.primary,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+  payButtonContainer: {
+    marginTop: 8,
+    alignItems: 'center',
   },
   payButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    ...theme.shadow.sm,
+  },
+  payButtonDisabled: {
+    backgroundColor: COLORS.disabled,
   },
   payButtonText: {
     ...theme.typography.button,
     color: COLORS.white,
+    marginRight: 8,
   },
-  disabledButton: {
-    backgroundColor: COLORS.disabled,
+  payButtonIcon: {
+    marginLeft: 4,
   },
-  // Modal styles
+  securePaymentText: {
+    ...theme.typography.caption,
+    color: COLORS.textSecondary,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
+  bankModalContent: {
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
-  modalTitle: {
+  bankModalTitle: {
     ...theme.typography.h5,
     color: COLORS.text,
+    fontWeight: '600',
   },
-  modalBody: {
-    padding: 16,
+  closeButton: {
+    padding: 4,
   },
-  modalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+  bankModalBody: {
+    padding: 20,
+    maxHeight: '80%',
   },
-  button: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  cancelButton: {
-    backgroundColor: COLORS.lightGray,
-  },
-  confirmButton: {
-    backgroundColor: COLORS.primary,
-  },
-  cancelButtonText: {
-    ...theme.typography.button,
-    color: COLORS.text,
-  },
-  confirmButtonText: {
-    ...theme.typography.button,
-    color: COLORS.white,
-  },
-  // Form styles
   formGroup: {
     marginBottom: 16,
   },
-  label: {
+  inputLabel: {
     ...theme.typography.caption,
     color: COLORS.textSecondary,
     marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  inputIcon: {
+    marginRight: 8,
   },
   input: {
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: 8,
-    padding: 12,
-    ...theme.typography.body,
-    color: COLORS.text,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  bankSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  bankSelectedText: {
-    ...theme.typography.body,
+    flex: 1,
+    height: 48,
+    ...theme.typography.body2,
     color: COLORS.text,
   },
-  placeholderText: {
-    ...theme.typography.body,
-    color: COLORS.placeholder,
+  selectContainer: {
+    marginBottom: 8,
+    position: 'relative',
+    zIndex: 10,
   },
-  bankList: {
-    maxHeight: 200,
+  dropdownContainer: {
+    width: '100%',
+    maxHeight: 250,
     backgroundColor: COLORS.white,
-    borderRadius: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     marginTop: 8,
+    marginBottom: 16,
     ...theme.shadow.sm,
   },
-  bankScrollView: {
-    maxHeight: 196,
+  dropdownScroll: {
+    maxHeight: 200,
   },
-  bankItem: {
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: COLORS.borderLight,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    ...theme.typography.body2,
+    color: COLORS.text,
+    padding: 0,
+    margin: 0,
+  },
+  clearButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  dropdownItem: {
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    minHeight: 48,
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+  },
+  dropdownItemText: {
+    ...theme.typography.body2,
+    color: COLORS.text,
+    flex: 1,
+  },
+  dropdownItemTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  selectWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    minHeight: 48,
+  },
+  selectIcon: {
+    marginRight: 8,
+  },
+  selectText: {
+    ...theme.typography.body2,
+    color: COLORS.text,
+    flex: 1,
+  },
+  bankAccountCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...theme.shadow.sm,
+  },
+  bankHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   bankName: {
-    ...theme.typography.body,
+    ...theme.typography.subtitle,
     color: COLORS.text,
+    marginLeft: 8,
+    fontWeight: '600',
   },
-  bankCode: {
+  infoGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 12,
+  },
+  infoLabel: {
     ...theme.typography.caption,
     color: COLORS.textSecondary,
   },
-  instructions: {
-    ...theme.typography.body,
-    color: COLORS.textSecondary,
-    marginBottom: 16,
-    textAlign: 'center',
+  infoValue: {
+    ...theme.typography.body2,
+    color: COLORS.text,
+  },
+  infoValueLink: {
+    ...theme.typography.body2,
+    color: COLORS.primary,
+    textDecorationLine: 'underline',
+  },
+  noteContainer: {
+    backgroundColor: 'rgba(25, 118, 210, 0.08)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+  },
+  noteTitle: {
+    ...theme.typography.subtitle2,
+    color: COLORS.primary,
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  noteText: {
+    ...theme.typography.body2,
+    color: COLORS.text,
   },
 });
 
