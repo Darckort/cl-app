@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
-import { removeFromCart, clearCart } from '../../redux/slices/cartSlice';
+import { removeFromCart, clearCart, updateQuantity } from '../../redux/slices/cartSlice';
 import COLORS from '../../constants/colors';
 import theme from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +15,31 @@ const CartScreen = () => {
 
   const handleRemoveFromCart = (productId) => {
     dispatch(removeFromCart(productId));
+  };
+
+  const handleIncrement = (productId, currentQuantity) => {
+    dispatch(updateQuantity({ 
+      id: productId, 
+      quantity: currentQuantity + 1 
+    }));
+  };
+
+  const handleDecrement = (productId, currentQuantity) => {
+    if (currentQuantity > 1) {
+      dispatch(updateQuantity({ 
+        id: productId, 
+        quantity: currentQuantity - 1 
+      }));
+    } else {
+      dispatch(removeFromCart(productId));
+    }
+  };
+
+  const handleQuantityChange = (productId, newQuantity) => {
+    const quantity = parseInt(newQuantity) || 1;
+    if (quantity > 0) {
+      dispatch(updateQuantity({ id: productId, quantity }));
+    }
   };
 
   const handleClearCart = () => {
@@ -45,7 +71,38 @@ const CartScreen = () => {
           <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.itemPrice}>${item.price.toFixed(2)} c/u</Text>
           <View style={styles.quantityContainer}>
-            <Text style={styles.quantityText}>Cantidad: {item.quantity}</Text>
+            <View style={styles.quantityControls}>
+              <TouchableOpacity 
+                style={[styles.quantityButton, item.quantity <= 1 && styles.disabledButton]}
+                onPress={() => handleDecrement(item.id, item.quantity)}
+                disabled={item.quantity <= 1}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name="remove" 
+                  size={16} 
+                  color={item.quantity <= 1 ? COLORS.gray : COLORS.primary} 
+                />
+              </TouchableOpacity>
+              
+              <TextInput
+                style={styles.quantityInput}
+                value={item.quantity.toString()}
+                keyboardType="numeric"
+                onChangeText={(text) => {
+                  const num = parseInt(text) || 1;
+                  handleQuantityChange(item.id, num);
+                }}
+              />
+              
+              <TouchableOpacity 
+                style={styles.quantityButton}
+                onPress={() => handleIncrement(item.id, item.quantity)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="add" size={16} color={COLORS.primary} />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.itemTotal}>${(item.price * item.quantity).toFixed(2)}</Text>
           </View>
         </View>
@@ -70,11 +127,12 @@ const CartScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Mi Carrito</Text>
-        <TouchableOpacity onPress={handleClearCart}>
-          <Text style={styles.clearButton}>Vaciar carrito</Text>
+        <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>
+          <Ionicons name="trash-outline" size={16} color={COLORS.white} style={{marginRight: 5}} />
+          <Text>Vaciar</Text>
         </TouchableOpacity>
       </View>
 
@@ -98,7 +156,7 @@ const CartScreen = () => {
           <Text style={styles.checkoutButtonText}>Pagar ahora</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -126,21 +184,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: COLORS.primary,
     padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
-    backgroundColor: COLORS.white,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    position: 'relative',
   },
   title: {
     ...theme.typography.h2,
-    color: COLORS.primary,
+    color: COLORS.white,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   clearButton: {
-    ...theme.typography.body,
-    color: COLORS.danger,
+    position: 'absolute',
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
   },
   listContent: {
     padding: theme.spacing.md,
@@ -186,10 +256,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 4,
   },
-  quantityText: {
-    ...theme.typography.caption,
-    color: COLORS.textSecondary,
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 4,
+  },
+  quantityButton: {
+    padding: 8,
+    minWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  quantityInput: {
+    width: 40,
+    textAlign: 'center',
+    padding: 4,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: COLORS.border,
+    ...theme.typography.body,
   },
   itemTotal: {
     ...theme.typography.bodyBold,

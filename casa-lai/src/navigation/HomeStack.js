@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/main/HomeScreen';
 import ProductDetailScreen from '../screens/product/ProductDetailScreen';
 import PaymentScreen from '../screens/main/PaymentScreen';
+import COLORS from '../constants/colors';
+import ProfileScreen from '../screens/main/ProfileScreen';
 import { View } from 'react-native';
 
 const Stack = createStackNavigator();
@@ -56,15 +58,27 @@ const HomeStack = () => {
         component={PaymentScreen}
         options={{
           headerShown: true,
-          title: 'Métodos de Pago',
+          title: 'Pago',
+          headerBackTitle: 'Atrás',
+        }}
+      />
+      <Stack.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{
+          headerShown: true,
+          title: 'Mi Perfil',
           headerBackTitle: 'Atrás',
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: COLORS.primary,
             elevation: 0,
             shadowOpacity: 0,
             borderBottomWidth: 0,
           },
-          headerTintColor: '#000',
+          headerTintColor: COLORS.white,
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
         }}
       />
     </Stack.Navigator>

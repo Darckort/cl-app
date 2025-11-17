@@ -804,9 +804,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     minHeight: 48,
   },
-  selectIcon: {
-    marginRight: 8,
-  },
   selectText: {
     ...theme.typography.body2,
     color: COLORS.text,
