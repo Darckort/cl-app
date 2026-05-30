@@ -15,6 +15,7 @@ import { loginUser, clearError } from '../../redux/slices/authSlice';
 import COLORS from '../../constants/colors';
 import theme from '../../constants/theme';
 import { Image as RNImage } from 'react-native';
+import { validateEmail, validatePassword, validateEmailWithDomain } from '../../utils/validation';
 
 // Intentar cargar la imagen
 let logoImage;
@@ -25,10 +26,21 @@ try {
   logoImage = null;
 }
 
+// Dominios de email permitidos (configurar según necesidad)
+const ALLOWED_EMAIL_DOMAINS = [
+  'gmail.com',
+  'yahoo.com',
+  'hotmail.com',
+  'outlook.com',
+  'live.com',
+];
+
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [imageError, setImageError] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.auth);
 
@@ -48,10 +60,31 @@ const LoginScreen = ({ navigation }) => {
   }, [dispatch]);
 
   const handleLogin = () => {
-    if (!email || !password) {
+    // Resetear errores
+    setEmailError('');
+    setPasswordError('');
+
+    // Validar email
+    if (!email.trim()) {
+      setEmailError('El email es requerido');
       return;
     }
-    dispatch(loginUser({ email, name: 'Usuario' }));
+    if (!validateEmailWithDomain(email, ALLOWED_EMAIL_DOMAINS)) {
+      setEmailError('Email inválido. Solo se permiten dominios: ' + ALLOWED_EMAIL_DOMAINS.join(', '));
+      return;
+    }
+
+    // Validar contraseña
+    if (!password.trim()) {
+      setPasswordError('La contraseña es requerida');
+      return;
+    }
+    if (!validatePassword(password)) {
+      setPasswordError('Mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número');
+      return;
+    }
+
+    dispatch(loginUser({ email, password, name: 'Usuario' }));
   };
 
   return (
@@ -94,29 +127,37 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Correo electrónico</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, emailError && styles.inputError]}
               placeholder="Ingresa tu correo"
               placeholderTextColor={COLORS.placeholder}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setEmailError('');
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               editable={!loading}
             />
+            {emailError ? <Text style={styles.fieldErrorText}>{emailError}</Text> : null}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Contraseña</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, passwordError && styles.inputError]}
               placeholder="Ingresa tu contraseña"
               placeholderTextColor={COLORS.placeholder}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                setPasswordError('');
+              }}
               secureTextEntry
               editable={!loading}
             />
+            {passwordError ? <Text style={styles.fieldErrorText}>{passwordError}</Text> : null}
           </View>
 
           <TouchableOpacity
@@ -202,6 +243,14 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     ...theme.typography.body,
     color: COLORS.text,
+  },
+  inputError: {
+    borderColor: COLORS.danger,
+  },
+  fieldErrorText: {
+    ...theme.typography.caption,
+    color: COLORS.danger,
+    marginTop: theme.spacing.xs,
   },
   loginButton: {
     backgroundColor: COLORS.primary,

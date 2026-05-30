@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { COLORS } from '../../constants/colors';
 import theme from '../../constants/theme';
+import { sanitizeText } from '../../utils/sanitization';
 
 const Input = ({
   label,
@@ -23,9 +24,20 @@ const Input = ({
   errorStyle,
   rightIcon,
   onRightIconPress,
+  sanitize = true, // Nueva prop para habilitar/deshabilitar sanitización
   ...props
 }) => {
   const showError = error && touched;
+
+  const handleTextChange = (text) => {
+    if (sanitize && !secureTextEntry) {
+      // Sanitizar el texto para prevenir inyecciones
+      const sanitized = sanitizeText(text);
+      onChangeText(sanitized);
+    } else {
+      onChangeText(text);
+    }
+  };
 
   return (
     <View style={[styles.container, style]}>
@@ -40,7 +52,7 @@ const Input = ({
         <TextInput
           style={[styles.input, inputStyle]}
           value={value}
-          onChangeText={onChangeText}
+          onChangeText={handleTextChange}
           placeholder={placeholder}
           placeholderTextColor={COLORS.placeholder}
           secureTextEntry={secureTextEntry}

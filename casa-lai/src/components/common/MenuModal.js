@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
@@ -8,7 +8,7 @@ import COLORS from '../../constants/colors';
 import theme from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
-const MenuScreen = () => {
+const MenuModal = ({ visible, onClose }) => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
 
@@ -24,7 +24,10 @@ const MenuScreen = () => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: () => dispatch(logoutUser()),
+          onPress: () => {
+            dispatch(logoutUser());
+            onClose();
+          },
         },
       ],
       { cancelable: true }
@@ -38,52 +41,79 @@ const MenuScreen = () => {
     { id: '4', title: 'Ayuda', icon: 'help-circle-outline' },
   ];
 
+  const handleMenuItemPress = (itemId) => {
+    if (itemId === '1') {
+      navigation.navigate('Profile');
+    }
+    onClose();
+  };
+
   // Usar SafeAreaView solo si no estamos en web
   const Container = Platform.OS === 'web' ? View : SafeAreaView;
   const containerProps = Platform.OS === 'web' ? {} : { edges: ['top'] };
 
   return (
-    <Container style={styles.container} {...containerProps}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Menú</Text>
-      </View>
-      
-      <ScrollView style={styles.menuList}>
-        {menuItems.map((item) => (
-          <TouchableOpacity 
-            key={item.id} 
-            style={styles.menuItem}
-            onPress={() => {
-              if (item.id === '1') { // ID del ítem de perfil
-                navigation.navigate('Profile');
-              }
-              // Agregar más condiciones para otros ítems del menú si es necesario
-            }}
-          >
-            <Ionicons name={item.icon} size={24} color={COLORS.primary} style={styles.menuIcon} />
-            <Text style={styles.menuText}>{item.title}</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Container style={styles.container} {...containerProps}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Menú</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.menuList}>
+              {menuItems.map((item) => (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={styles.menuItem}
+                  onPress={() => handleMenuItemPress(item.id)}
+                >
+                  <Ionicons name={item.icon} size={24} color={COLORS.primary} style={styles.menuIcon} />
+                  <Text style={styles.menuText}>{item.title}</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} style={styles.logoutIcon} />
-          <Text style={styles.logoutText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
+            <View style={styles.footer}>
+              <TouchableOpacity 
+                style={styles.logoutButton}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={20} color={COLORS.danger} style={styles.logoutIcon} />
+                <Text style={styles.logoutText}>Cerrar Sesión</Text>
+              </TouchableOpacity>
+            </View>
+          </Container>
+        </View>
       </View>
-    </Container>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
     flex: 1,
     backgroundColor: COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  container: {
+    flex: 1,
   },
   header: {
     backgroundColor: COLORS.primary,
@@ -97,12 +127,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   title: {
     ...theme.typography.h2,
     color: COLORS.white,
-    textAlign: 'center',
     fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: theme.spacing.sm,
   },
   menuList: {
     flex: 1,
@@ -129,13 +163,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: COLORS.lightGray,
-    marginBottom: theme.spacing.lg,
-    elevation: 10,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     backgroundColor: COLORS.background,
   },
   logoutButton: {
@@ -160,4 +187,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MenuScreen;
+export default MenuModal;

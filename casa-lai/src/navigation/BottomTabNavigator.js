@@ -5,7 +5,6 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useSelector } from 'react-redux';
 import HomeStack from './HomeStack';
 import CartScreen from '../screens/main/CartScreen';
-import MenuScreen from '../screens/main/MenuScreen';
 import COLORS from '../constants/colors';
 import theme from '../constants/theme';
 
@@ -65,26 +64,19 @@ const BottomTabNavigator = () => {
         ...tabBarOptions,
         tabBarIcon: ({ focused, color, size }) => {
           if (route.name === 'Inicio') {
-            return <Ionicons 
-                     name={focused ? 'home' : 'home-outline'} 
-                     size={size} 
-                     color={color} 
+            return <Ionicons
+                     name={focused ? 'home' : 'home-outline'}
+                     size={size}
+                     color={color}
                    />;
           } else if (route.name === 'Carrito') {
             return <CartIconWithBadge focused={focused} color={color} size={size} />;
-          } else if (route.name === 'Menú') {
-            return <Ionicons 
-                     name={focused ? 'menu' : 'menu-outline'} 
-                     size={size} 
-                     color={color} 
-                   />;
           }
         },
       })}
     >
       <Tab.Screen name="Inicio" component={HomeStack} />
       <Tab.Screen name="Carrito" component={CartScreen} />
-      <Tab.Screen name="Menú" component={MenuScreen} />
     </Tab.Navigator>
   );
 };

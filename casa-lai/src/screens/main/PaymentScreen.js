@@ -6,6 +6,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { clearCart } from '../../redux/slices/cartSlice';
 import COLORS from '../../constants/colors';
 import theme from '../../constants/theme';
+import { validateVenezuelaPhone, validatePaymentReference } from '../../utils/validation';
+import { sanitizeForAPI } from '../../utils/sanitization';
 
 const banks = [
   { id: '0102', name: 'Banco de Venezuela' },
@@ -59,6 +61,8 @@ const PaymentScreen = () => {
   const [selectedBank, setSelectedBank] = useState('');
   const [showBankDropdown, setShowBankDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [referenceError, setReferenceError] = useState('');
   
   // Datos de la empresa
   const companyBankInfo = {
@@ -82,15 +86,19 @@ const PaymentScreen = () => {
     // Remove all non-digit characters
     const cleaned = text.replace(/\D/g, '');
     
+    // Limitar a 11 dígitos (código de área + número)
+    const limited = cleaned.substring(0, 11);
+    
     // Format as 0412-1234567 (4-7)
     let formatted = '';
-    if (cleaned.length > 4) {
-      formatted = `${cleaned.slice(0, 4)}-${cleaned.slice(4, 11)}`;
+    if (limited.length > 4) {
+      formatted = `${limited.slice(0, 4)}-${limited.slice(4, 11)}`;
     } else {
-      formatted = cleaned;
+      formatted = limited;
     }
     
-    setPhone(cleaned); // Guardamos el número sin formato para procesamiento
+    setPhone(limited); // Guardamos el número sin formato para procesamiento
+    setPhoneError(''); // Limpiar error al escribir
   };
 
   const handlePaymentSuccess = () => {
@@ -121,6 +129,43 @@ const PaymentScreen = () => {
   };
 
   const handlePayment = () => {
+    // Resetear errores
+    setPhoneError('');
+    setReferenceError('');
+
+    // Validar teléfono
+    if (!phone || phone.length === 0) {
+      setPhoneError('El teléfono es requerido');
+      return;
+    }
+    if (!validateVenezuelaPhone(phone)) {
+      setPhoneError('Teléfono venezolano inválido (formato: 0412-1234567)');
+      return;
+    }
+
+    // Validar referencia
+    if (!reference || reference.length === 0) {
+      setReferenceError('La referencia es requerida');
+      return;
+    }
+    if (!validatePaymentReference(reference)) {
+      setReferenceError('Referencia inválida (debe tener 6 dígitos)');
+      return;
+    }
+
+    // Sanitizar datos antes de procesar
+    const sanitizedData = sanitizeForAPI({
+      phone,
+      reference,
+      selectedBank,
+      total
+    }, {
+      phone: { type: 'phone' },
+      reference: { type: 'reference' },
+      selectedBank: { type: 'text' },
+      total: { type: 'number' }
+    });
+
     // Lógica de pago simplificada
     setIsProcessing(true);
     
@@ -307,7 +352,7 @@ const PaymentScreen = () => {
 
               <View style={styles.formGroup}>
                 <Text style={styles.inputLabel}>Número de referencia (6 dígitos)</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, referenceError && styles.inputContainerError]}>
                   <Ionicons name="receipt-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
@@ -318,15 +363,17 @@ const PaymentScreen = () => {
                       // Limitar a 6 dígitos numéricos
                       const cleaned = text.replace(/[^0-9]/g, '').substring(0, 6);
                       setReference(cleaned);
+                      setReferenceError('');
                     }}
                     maxLength={6}
                   />
                 </View>
+                {referenceError ? <Text style={styles.fieldErrorText}>{referenceError}</Text> : null}
               </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.inputLabel}>Número de teléfono</Text>
-                <View style={styles.inputContainer}>
+                <View style={[styles.inputContainer, phoneError && styles.inputContainerError]}>
                   <Ionicons name="phone-portrait-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
@@ -337,6 +384,7 @@ const PaymentScreen = () => {
                     maxLength={12}
                   />
                 </View>
+                {phoneError ? <Text style={styles.fieldErrorText}>{phoneError}</Text> : null}
               </View>
 
               <View style={styles.noteContainer}>
@@ -724,6 +772,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+  inputContainerError: {
+    borderColor: COLORS.danger,
+  },
   inputIcon: {
     marginRight: 8,
   },
@@ -732,6 +783,12 @@ const styles = StyleSheet.create({
     height: 48,
     ...theme.typography.body2,
     color: COLORS.text,
+  },
+  fieldErrorText: {
+    ...theme.typography.caption,
+    color: COLORS.danger,
+    marginTop: 4,
+    marginLeft: 4,
   },
   selectContainer: {
     marginBottom: 8,

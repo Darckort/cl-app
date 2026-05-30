@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Image,
   ScrollView,
   Dimensions,
   TouchableOpacity,
@@ -19,6 +19,8 @@ import { useProducts } from '../../hooks/useProducts';
 import { useSearch } from '../../hooks/useSearch';
 import { useCart } from '../../hooks/useCart';
 import { IMAGES } from '../../config/images';
+import MenuModal from '../../components/common/MenuModal';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -192,6 +194,9 @@ const HomeScreen = ({ navigation }) => {
   const { searchQuery, setSearchQuery, searchResults, filterData } = useSearch();
   const { addItem } = useCart();
 
+  // Estado para el modal del menú
+  const [menuVisible, setMenuVisible] = useState(false);
+
   // Filtrar productos cuando cambia el término de búsqueda o los productos
   const filteredSections = searchQuery ? searchResults : products;
   
@@ -227,49 +232,65 @@ const HomeScreen = ({ navigation }) => {
   }
 
   return (
-    <ScreenWithHeader onSearch={handleSearch}>
-      <ImageBackground 
-        source={IMAGES.BACKGROUND} 
-        style={styles.backgroundImage}
-        resizeMode="cover">
-        <View style={styles.backgroundImage}>
-          <Image 
-            source={IMAGES.BACKGROUND} 
-            style={{
-              width: '100%',
-              height: '100%',
-              resizeMode: 'cover',
-              position: 'absolute',
-            }}
-          />
-        </View>
-        <ScrollView style={styles.container}>
-          <View style={styles.contentContainer}>
-            {/* Sección de ofertas destacadas */}
-            {filteredSections.featured && filteredSections.featured.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionHeader}>Ofertas Especiales</Text>
-                <FeaturedSlider items={filteredSections.featured} />
-              </View>
-            )}
-
-        {/* Secciones por categoría */}
-        {Object.keys(filteredSections).map(category => {
-          if (category === 'featured') return null; // Ya mostramos las ofertas arriba
-          
-          return (
-            <CategorySection
-              key={category}
-              title={sectionTitles[category] || category}
-              items={filteredSections[category]}
-              onPressItem={handleProductPress}
+    <>
+      <ScreenWithHeader onSearch={handleSearch}>
+        <ImageBackground
+          source={IMAGES.BACKGROUND}
+          style={styles.backgroundImage}
+          resizeMode="cover">
+          <View style={styles.backgroundImage}>
+            <Image
+              source={IMAGES.BACKGROUND}
+              style={{
+                width: '100%',
+                height: '100%',
+                resizeMode: 'cover',
+                position: 'absolute',
+              }}
             />
-          );
-        })}
           </View>
-        </ScrollView>
-      </ImageBackground>
-    </ScreenWithHeader>
+          <ScrollView style={styles.container}>
+            <View style={styles.contentContainer}>
+              {/* Sección de ofertas destacadas */}
+              {filteredSections.featured && filteredSections.featured.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionHeader}>Ofertas Especiales</Text>
+                  <FeaturedSlider items={filteredSections.featured} />
+                </View>
+              )}
+
+            {/* Secciones por categoría */}
+            {Object.keys(filteredSections).map(category => {
+              if (category === 'featured') return null; // Ya mostramos las ofertas arriba
+
+              return (
+                <CategorySection
+                  key={category}
+                  title={sectionTitles[category] || category}
+                  items={filteredSections[category]}
+                  onPressItem={handleProductPress}
+                />
+              );
+            })}
+            </View>
+          </ScrollView>
+        </ImageBackground>
+      </ScreenWithHeader>
+
+      {/* Botón flotante de menú */}
+      <TouchableOpacity
+        style={styles.menuButton}
+        onPress={() => setMenuVisible(true)}
+      >
+        <Ionicons name="menu" size={24} color={COLORS.white} />
+      </TouchableOpacity>
+
+      {/* Modal del menú */}
+      <MenuModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+      />
+    </>
   );
 };
 
@@ -391,6 +412,23 @@ const styles = StyleSheet.create({
   paginationDotActive: {
     backgroundColor: COLORS.white,
     width: 20,
+  },
+  menuButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: COLORS.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 1000,
   },
   // Estilos para las secciones de categorías
   categorySection: {

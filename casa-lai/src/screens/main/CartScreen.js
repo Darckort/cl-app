@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -7,11 +7,15 @@ import { removeFromCart, clearCart, updateQuantity } from '../../redux/slices/ca
 import COLORS from '../../constants/colors';
 import theme from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import MenuModal from '../../components/common/MenuModal';
 
 const CartScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const { items, total } = useSelector(state => state.cart);
+
+  // Estado para el modal del menú
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const handleRemoveFromCart = (productId) => {
     dispatch(removeFromCart(productId));
@@ -127,36 +131,52 @@ const CartScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Mi Carrito</Text>
-        <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>
-          <Ionicons name="trash-outline" size={16} color={COLORS.white} style={{marginRight: 5}} />
-          <Text>Vaciar</Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-      />
-
-      <View style={styles.footer}>
-        <View style={styles.totalContainer}>
-          <Text style={styles.totalText}>Total:</Text>
-          <Text style={styles.totalAmount}>${total.toFixed(2)}</Text>
+    <>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Mi Carrito</Text>
+          <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>
+            <Ionicons name="trash-outline" size={16} color={COLORS.white} style={{marginRight: 5}} />
+            <Text>Vaciar</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={styles.checkoutButton}
-          onPress={() => navigation.navigate('Payment')}
-        >
-          <Text style={styles.checkoutButtonText}>Pagar ahora</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+
+        <FlatList
+          data={items}
+          renderItem={renderItem}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+
+        <View style={styles.footer}>
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalText}>Total:</Text>
+            <Text style={styles.totalAmount}>${total.toFixed(2)}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.checkoutButton}
+            onPress={() => navigation.navigate('Payment')}
+          >
+            <Text style={styles.checkoutButtonText}>Pagar ahora</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+
+      {/* Botón flotante de menú */}
+      <TouchableOpacity
+        style={styles.menuButton}
+        onPress={() => setMenuVisible(true)}
+      >
+        <Ionicons name="menu" size={24} color={COLORS.white} />
+      </TouchableOpacity>
+
+      {/* Modal del menú */}
+      <MenuModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+      />
+    </>
   );
 };
 
@@ -297,6 +317,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.lightGray,
     backgroundColor: COLORS.white,
+    elevation: 10,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   totalContainer: {
     flexDirection: 'row',
@@ -320,6 +346,23 @@ const styles = StyleSheet.create({
   checkoutButtonText: {
     ...theme.typography.button,
     color: COLORS.white,
+  },
+  menuButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: COLORS.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 1000,
   },
 });
 
